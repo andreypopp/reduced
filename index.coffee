@@ -53,6 +53,11 @@ asSeq = (v) ->
   else
     box(v)
 
+repeat = (v) ->
+  depth: 0
+  next: (done) ->
+    done(null, v)
+
 map = (seq, f) ->
   seq = asSeq seq
   depth: seq.depth + 1
@@ -188,6 +193,7 @@ produced = (seq) ->
   reduced(seq, ((v, s) -> s.concat [v]), [])
 
 module.exports = {
-  asSeq, empty, box, promise, array,
-  map, scan, fold, take, drop, takeWhile, dropWhile, filter, join, mapCat,
+  asSeq, empty, box, promise, array, repeat,
+  map, scan, fold,
+  take, drop, takeWhile, dropWhile, filter, join, mapCat,
   reduced, produced}

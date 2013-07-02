@@ -1,5 +1,5 @@
 {deepEqual, equal, ok} = require 'assert'
-{asSeq, map, scan, fold,
+{asSeq, repeat, map, scan, fold,
   take, drop, takeWhile, dropWhile,
   filter, join, mapCat,
   reduced, produced} = require './index'
@@ -138,3 +138,11 @@ describe 'combinators', ->
         deepEqual v, [1..10]
 
     all([c1, c2]).fin(done).end()
+
+  it 'provides repeat', (done) ->
+    seq = repeat 10
+    produced(take seq, 5)
+      .then (v) ->
+        deepEqual v, [10, 10, 10, 10, 10]
+      .fin(done)
+      .end()
