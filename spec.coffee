@@ -142,33 +142,47 @@ describe 'combinators', ->
       .fin(done)
       .end()
 
-  it 'provides join', (done) ->
-    c1 = produced(join [1..10])
-      .then (v) ->
-        deepEqual v, [1..10]
 
-    c2 = produced(join [1..10].map((v) -> [v]))
-      .then (v) ->
-        deepEqual v, [1..10]
+  describe 'join', ->
 
-    c3 = produced(join [1, [2], 3])
-      .then (v) ->
-        deepEqual v, [1, 2, 3]
+    it 'joins', (done) ->
+      produced(join [1..10])
+        .then (v) ->
+          deepEqual v, [1..10]
+        .fin(done)
+        .end()
 
-    all([c1, c2, c3]).fin(done).end()
+    it 'flattens', (done) ->
+      produced(join [1..10].map((v) -> [v]))
+        .then (v) ->
+          deepEqual v, [1..10]
+        .fin(done)
+        .end()
 
-  it 'provides mapCat', (done) ->
-    seq = mapCat [1..10], (x) -> [x]
-    c1 = produced(seq)
-      .then (v) ->
-        deepEqual v, [1..10]
+    it 'works with mixed returned values', (done) ->
+      produced(join [1, [2], 3])
+        .then (v) ->
+          deepEqual v, [1, 2, 3]
+        .fin(done)
+        .end()
 
-    seq = mapCat [1..10], (x) -> if x % 2 == 0 then [x] else x
-    c2 = produced(seq)
-      .then (v) ->
-        deepEqual v, [1..10]
+  describe 'mapCat', ->
 
-    all([c1, c2]).fin(done).end()
+    it 'maps and flattens', (done) ->
+      seq = mapCat [1..10], (x) -> [x]
+      produced(seq)
+        .then (v) ->
+          deepEqual v, [1..10]
+        .fin(done)
+        .end()
+
+    it 'works with mixed returned values', (done) ->
+      seq = mapCat [1..10], (x) -> if x % 2 == 0 then [x] else x
+      produced(seq)
+        .then (v) ->
+          deepEqual v, [1..10]
+        .fin(done)
+        .end()
 
   it 'provides repeat', (done) ->
     seq = repeat 10
