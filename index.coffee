@@ -4,13 +4,11 @@ SKIP = 0
 END = 1
 
 empty = ->
-  depth: 1
   next: (done) ->
     done(END) if done
 
 box = (v) ->
   seen = false
-  depth: 1
   next: (done) ->
     unless seen
       seen = true
@@ -20,7 +18,6 @@ box = (v) ->
 
 array = (a) ->
   a = a.slice(0)
-  depth: 1
   next: (done) ->
     if a.length > 0
       value = a.shift()
@@ -30,7 +27,6 @@ array = (a) ->
 
 promise = (p) ->
   seen = false
-  depth: 1
   next: (done) ->
     unless seen
       seen = true
@@ -54,20 +50,23 @@ asSeq = (v) ->
     box(v)
 
 repeat = (v) ->
-  depth: 0
   next: (done) ->
     done(null, v)
 
+lazy = (seqFactory) ->
+  seq = undefined
+  next: (done) ->
+    seq = asSeq seqFactory() unless seq?
+    seq.next(done)
+
 map = (seq, f) ->
   seq = asSeq seq
-  depth: seq.depth + 1
   next: (done) ->
     seq.next (s, v) ->
       if s? then done(s) else done(null, f v)
 
 scan = (seq, f, acc) ->
   seq = asSeq seq
-  depth: seq.depth + 1
   next: (done) ->
     seq.next (s, v) ->
       if s?
@@ -79,7 +78,6 @@ scan = (seq, f, acc) ->
 fold = (seq, f, acc) ->
   seq = asSeq seq
   computed = false
-  depth: seq.depth + 1
   next: (done) ->
     seq.next (s, v) ->
       if computed
@@ -95,7 +93,6 @@ fold = (seq, f, acc) ->
 
 take = (seq, n = 10) ->
   seq = asSeq seq
-  depth: seq.depth + 1
   next: (done) ->
     if n > 0
       n -= 1
@@ -105,7 +102,6 @@ take = (seq, n = 10) ->
 
 drop = (seq, n = 10) ->
   seq = asSeq seq
-  depth: seq.depth + 1
   next: (done) ->
     if n > 0
       n -= 1
@@ -116,18 +112,18 @@ drop = (seq, n = 10) ->
 
 dropWhile = (seq, f) ->
   seq = asSeq seq
-  depth: seq.depth + 1
+  seen = false
   next: (done) ->
     seq.next (s, v) ->
       return done(s) if s?
-      if f(v)
+      if f(v) and not seen
         done(SKIP)
       else
+        seen = true
         done(null, v)
 
 takeWhile = (seq, f) ->
   seq = asSeq seq
-  depth: seq.depth + 1
   next: (done) ->
     seq.next (s, v) ->
       return done(s) if s?
@@ -138,7 +134,6 @@ takeWhile = (seq, f) ->
 
 filter = (seq, f) ->
   seq = asSeq seq
-  depth: seq.depth + 1
   next: (done) ->
     seq.next (s, v) ->
       if s? then done(s) else if f(v) then done(null, v) else done(SKIP)
@@ -163,28 +158,26 @@ join = (seqs) ->
         current = asSeq seq
         nextCurrent(done)
 
-  depth: seqs.depth
   next: (done) ->
     unless current then nextSeq(done) else nextCurrent(done)
 
 mapCat = (seq, f) ->
   join(map(seq, f))
 
+series = (f, seed) ->
+  computed = f seed
+  join [computed, lazy -> (series f, computed)]
+
 reduced = (seq, f, s, p = null, n = 0) ->
   seq = asSeq seq
   p = p or q.defer()
-  yieldAfter = 3000 / seq.depth
   onValue = (ns, v) ->
     if ns == END
       p.resolve(s)
     else
       nv = if ns == SKIP then s else if f then f(v, s) else v
-
-      if n >= yieldAfter
-        setImmediate ->
-          n = 0
-          reduced seq, f, nv, p, n + 1
-      else
+      setImmediate ->
+        n = 0
         reduced seq, f, nv, p, n + 1
   seq.next onValue
   p
@@ -193,7 +186,7 @@ produced = (seq) ->
   reduced(seq, ((v, s) -> s.concat [v]), [])
 
 module.exports = {
-  asSeq, empty, box, promise, array, repeat,
-  map, scan, fold,
+  asSeq, empty, box, promise, array, repeat, lazy,
+  map, scan, fold, series,
   take, drop, takeWhile, dropWhile, filter, join, mapCat,
   reduced, produced}

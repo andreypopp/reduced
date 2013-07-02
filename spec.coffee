@@ -1,5 +1,6 @@
 {deepEqual, equal, ok} = require 'assert'
-{asSeq, repeat, map, scan, fold,
+{asSeq, lazy,
+  repeat, map, scan, fold, series,
   take, drop, takeWhile, dropWhile,
   filter, join, mapCat,
   reduced, produced} = require './index'
@@ -71,24 +72,44 @@ describe 'combinators', ->
       .fin(done)
       .end()
 
-  it 'provides take', (done) ->
-    seq = take [1..10], 5
-    produced(seq)
-      .then (v) ->
-        deepEqual v, [1..5]
-      .fin(done)
-      .end()
+  describe 'take', ->
 
-  it 'provides drop', (done) ->
-    seq = drop [1..10], 5
-    produced(seq)
-      .then (v) ->
-        deepEqual v, [6..10]
-      .fin(done)
-      .end()
+    it 'takes some number of elements from the start', (done) ->
+      seq = take [1..10], 5
+      produced(seq)
+        .then (v) ->
+          deepEqual v, [1..5]
+        .fin(done)
+        .end()
+
+    it 'can take no elements', (done) ->
+      seq = take [1..10], 0
+      produced(seq)
+        .then (v) ->
+          deepEqual v, []
+        .fin(done)
+        .end()
+
+  describe 'drop', ->
+
+    it 'drop some number of elements from the start', (done) ->
+      seq = drop [1..10], 5
+      produced(seq)
+        .then (v) ->
+          deepEqual v, [6..10]
+        .fin(done)
+        .end()
+
+    it 'can drop no elements', (done) ->
+      seq = drop [1..10], 0
+      produced(seq)
+        .then (v) ->
+          deepEqual v, [1..10]
+        .fin(done)
+        .end()
 
   it 'provides takeWhile', (done) ->
-    seq = takeWhile [1..10], (v) -> v < 6
+    seq = takeWhile [1..10].concat([1, 2]), (v) -> v < 6
     produced(seq)
       .then (v) ->
         deepEqual v, [1..5]
@@ -96,10 +117,10 @@ describe 'combinators', ->
       .end()
 
   it 'provides dropWhile', (done) ->
-    seq = dropWhile [1..10], (v) -> v < 6
+    seq = dropWhile [1..10].concat([1, 2]), (v) -> v < 6
     produced(seq)
       .then (v) ->
-        deepEqual v, [6..10]
+        deepEqual v, [6..10].concat([1, 2])
       .fin(done)
       .end()
 
@@ -144,5 +165,23 @@ describe 'combinators', ->
     produced(take seq, 5)
       .then (v) ->
         deepEqual v, [10, 10, 10, 10, 10]
+      .fin(done)
+      .end()
+
+  it 'provides series', (done) ->
+    seq = series ((v) -> v + 1), 0
+    produced(take seq, 10)
+      .then (v) ->
+        deepEqual v, [1..10]
+      .fin(done)
+      .end()
+
+describe 'lazy', ->
+
+  it 'can defer collection creation', (done) ->
+    seq = lazy -> [1..10]
+    produced(seq)
+      .then (v) ->
+        deepEqual v, [1..10]
       .fin(done)
       .end()
