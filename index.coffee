@@ -42,11 +42,11 @@ promise = (p) ->
       done END
 
 asSeq = (v) ->
-  if v.next?
+  if v?.next?
     v
   else if Array.isArray(v)
     array(v)
-  else if v.then?
+  else if v?.then?
     promise(v)
   else if not v?
     empty()

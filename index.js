@@ -75,11 +75,11 @@ promise = function(p) {
 };
 
 asSeq = function(v) {
-  if (v.next != null) {
+  if ((v != null ? v.next : void 0) != null) {
     return v;
   } else if (Array.isArray(v)) {
     return array(v);
-  } else if (v.then != null) {
+  } else if ((v != null ? v.then : void 0) != null) {
     return promise(v);
   } else if (v == null) {
     return empty();
