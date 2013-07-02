@@ -2,7 +2,7 @@
 {asSeq, lazy,
   repeat, map, scan, fold, series,
   take, drop, takeWhile, dropWhile,
-  filter, join, mapCat,
+  filter, join, mapCat, zip,
   reduced, produced} = require './index'
 {resolve, all} = require 'kew'
 
@@ -141,7 +141,33 @@ describe 'combinators', ->
         deepEqual v, [2, 4, 6, 8, 10]
       .fin(done)
       .end()
+      
+  describe 'zip', ->
 
+    it 'zips several seqs into one', (done) ->
+      seq = zip([1..10], [1..10], [101..200])
+      produced(seq)
+        .then (v) ->
+          deepEqual v, [[1, 1, 101],
+                        [2, 2, 102],
+                        [3, 3, 103],
+                        [4, 4, 104],
+                        [5, 5, 105],
+                        [6, 6, 106],
+                        [7, 7, 107],
+                        [8, 8, 108],
+                        [9, 9, 109],
+                        [10, 10, 110]]
+        .fin(done)
+        .end()
+
+    it 'can zip nothing', (done) ->
+      seq = zip()
+      produced(seq)
+        .then (v) ->
+          deepEqual v, []
+        .fin(done)
+        .end()
 
   describe 'join', ->
 

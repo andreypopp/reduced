@@ -182,6 +182,17 @@ series = (f, seed) ->
       seed = f v
       done(null, v)
 
+zip = (seqs...) ->
+  return empty() if seqs.length == 0
+  seqs = seqs.map asSeq
+  makeSeq (done) ->
+    values = for seq in seqs
+      promiseNext(seq)
+    q.all(values).then (values) ->
+      for [s, v] in values
+        return done(s) if s?
+      done null, (v for [s, v] in values)
+
 reduced = (seq, f, s, p = null, n = 0) ->
   seq = asSeq seq
   p = p or q.defer()
@@ -199,8 +210,18 @@ reduced = (seq, f, s, p = null, n = 0) ->
 produced = (seq) ->
   reduced(seq, ((v, s) -> s.concat [v]), [])
 
+promiseNext = (seq) ->
+  p = q.defer()
+  resolve = p.resolve.bind(p)
+  seq.next (s, v) ->
+    if s == SKIP
+      promiseNext(seq).then(resolve)
+    else
+      resolve [s, v]
+  p
+
 module.exports = {
   asSeq, empty, box, promise, array, repeat, lazy,
-  map, scan, fold, series,
+  map, scan, fold, series, zip,
   take, drop, takeWhile, dropWhile, filter, join, mapCat,
   reduced, produced}
