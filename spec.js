@@ -42,14 +42,27 @@ describe('creating seqs with asSeq', function() {
 });
 
 describe('combinators', function() {
-  it('provides map', function(done) {
-    var seq;
-    seq = map([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], function(v) {
-      return v + 1;
+  describe('map', function() {
+    it('map a function over seq', function(done) {
+      var seq;
+      seq = map([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], function(v) {
+        return v + 1;
+      });
+      return produced(seq).then(function(v) {
+        return deepEqual(v, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+      }).fin(done).end();
     });
-    return produced(seq).then(function(v) {
-      return deepEqual(v, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-    }).fin(done).end();
+    return it('does not flatten', function(done) {
+      var seq;
+      seq = map([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], function(v) {
+        return [v + 1];
+      });
+      return produced(seq).then(function(v) {
+        return deepEqual(v, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(function(v) {
+          return [v];
+        }));
+      }).fin(done).end();
+    });
   });
   it('provides scan', function(done) {
     var seq;
@@ -170,14 +183,25 @@ describe('combinators', function() {
       return deepEqual(v, [10, 10, 10, 10, 10]);
     }).fin(done).end();
   });
-  return it('provides series', function(done) {
-    var seq;
-    seq = series((function(v) {
-      return v + 1;
-    }), 0);
-    return produced(take(seq, 10)).then(function(v) {
-      return deepEqual(v, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    }).fin(done).end();
+  return describe('series', function() {
+    it('generates new value from the previous one', function(done) {
+      var seq;
+      seq = series((function(v) {
+        return v + 1;
+      }), 0);
+      return produced(take(seq, 10)).then(function(v) {
+        return deepEqual(v, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+      }).fin(done).end();
+    });
+    return it('flattens', function(done) {
+      var seq;
+      seq = series((function(v) {
+        return [v + 1];
+      }), 0);
+      return produced(take(seq, 10)).then(function(v) {
+        return deepEqual(v, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+      }).fin(done).end();
+    });
   });
 });
 
@@ -190,5 +214,28 @@ describe('lazy', function() {
     return produced(seq).then(function(v) {
       return deepEqual(v, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     }).fin(done).end();
+  });
+});
+
+describe('seq methods', function() {
+  var nats;
+  nats = function() {
+    return series((function(v) {
+      return v + 1;
+    }), 1);
+  };
+  describe('reduced', function() {
+    return it('works like reduced', function(done) {
+      return take(nats(), 10).reduced().then(function(v) {
+        return deepEqual(v, 10);
+      }).fin(done).end();
+    });
+  });
+  return describe('reduced', function() {
+    return it('works like produced', function(done) {
+      return take(nats(), 10).produced().then(function(v) {
+        return deepEqual(v, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      }).fin(done).end();
+    });
   });
 });

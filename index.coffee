@@ -3,13 +3,25 @@ q = require 'kew'
 SKIP = 0
 END = 1
 
+seqProto =
+  reduced: (f, s) ->
+    reduced(this, f, s)
+
+  produced: ->
+    produced(this)
+
+makeSeq = (next) ->
+  s = Object.create(seqProto)
+  s.next = next.bind(s)
+  s
+
 empty = ->
-  next: (done) ->
+  makeSeq (done) ->
     done(END) if done
 
 box = (v) ->
   seen = false
-  next: (done) ->
+  makeSeq (done) ->
     unless seen
       seen = true
       done null, v if done
@@ -18,7 +30,7 @@ box = (v) ->
 
 array = (a) ->
   a = a.slice(0)
-  next: (done) ->
+  makeSeq (done) ->
     if a.length > 0
       value = a.shift()
       done(null, value) if done
@@ -27,7 +39,7 @@ array = (a) ->
 
 promise = (p) ->
   seen = false
-  next: (done) ->
+  makeSeq (done) ->
     unless seen
       seen = true
       p
@@ -50,24 +62,24 @@ asSeq = (v) ->
     box(v)
 
 repeat = (v) ->
-  next: (done) ->
+  makeSeq (done) ->
     done(null, v)
 
 lazy = (seqFactory) ->
   seq = undefined
-  next: (done) ->
+  makeSeq (done) ->
     seq = asSeq seqFactory() unless seq?
     seq.next(done)
 
 map = (seq, f) ->
   seq = asSeq seq
-  next: (done) ->
+  makeSeq (done) ->
     seq.next (s, v) ->
       if s? then done(s) else done(null, f v)
 
 scan = (seq, f, acc) ->
   seq = asSeq seq
-  next: (done) ->
+  makeSeq (done) ->
     seq.next (s, v) ->
       if s?
         done s
@@ -78,7 +90,7 @@ scan = (seq, f, acc) ->
 fold = (seq, f, acc) ->
   seq = asSeq seq
   computed = false
-  next: (done) ->
+  makeSeq (done) ->
     seq.next (s, v) ->
       if computed
         done(END)
@@ -93,7 +105,7 @@ fold = (seq, f, acc) ->
 
 take = (seq, n = 10) ->
   seq = asSeq seq
-  next: (done) ->
+  makeSeq (done) ->
     if n > 0
       n -= 1
       seq.next(done)
@@ -102,7 +114,7 @@ take = (seq, n = 10) ->
 
 drop = (seq, n = 10) ->
   seq = asSeq seq
-  next: (done) ->
+  makeSeq (done) ->
     if n > 0
       n -= 1
       seq.next()
@@ -113,7 +125,7 @@ drop = (seq, n = 10) ->
 dropWhile = (seq, f) ->
   seq = asSeq seq
   seen = false
-  next: (done) ->
+  makeSeq (done) ->
     seq.next (s, v) ->
       return done(s) if s?
       if f(v) and not seen
@@ -124,7 +136,7 @@ dropWhile = (seq, f) ->
 
 takeWhile = (seq, f) ->
   seq = asSeq seq
-  next: (done) ->
+  makeSeq (done) ->
     seq.next (s, v) ->
       return done(s) if s?
       if f(v)
@@ -134,7 +146,7 @@ takeWhile = (seq, f) ->
 
 filter = (seq, f) ->
   seq = asSeq seq
-  next: (done) ->
+  makeSeq (done) ->
     seq.next (s, v) ->
       if s? then done(s) else if f(v) then done(null, v) else done(SKIP)
 
@@ -158,15 +170,17 @@ join = (seqs) ->
         current = asSeq seq
         nextCurrent(done)
 
-  next: (done) ->
+  makeSeq (done) ->
     unless current then nextSeq(done) else nextCurrent(done)
 
 mapCat = (seq, f) ->
   join(map(seq, f))
 
 series = (f, seed) ->
-  computed = f seed
-  join [computed, lazy -> (series f, computed)]
+  makeSeq (done) ->
+    asSeq(seed).next (s, v) ->
+      seed = f v
+      done(null, v)
 
 reduced = (seq, f, s, p = null, n = 0) ->
   seq = asSeq seq

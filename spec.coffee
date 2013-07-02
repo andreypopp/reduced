@@ -48,13 +48,23 @@ describe 'creating seqs with asSeq', ->
 
 describe 'combinators', ->
 
-  it 'provides map', (done) ->
-    seq = map [1..10], (v) -> v + 1
-    produced(seq)
-      .then (v) ->
-        deepEqual v, [2..11]
-      .fin(done)
-      .end()
+  describe 'map', ->
+
+    it 'map a function over seq', (done) ->
+      seq = map [1..10], (v) -> v + 1
+      produced(seq)
+        .then (v) ->
+          deepEqual v, [2..11]
+        .fin(done)
+        .end()
+
+    it 'does not flatten', (done) ->
+      seq = map [1..10], (v) -> [v + 1]
+      produced(seq)
+        .then (v) ->
+          deepEqual v, [2..11].map (v) -> [v]
+        .fin(done)
+        .end()
 
   it 'provides scan', (done) ->
     seq = scan [1..5], ((v, a) -> v + a), 0
@@ -168,13 +178,24 @@ describe 'combinators', ->
       .fin(done)
       .end()
 
-  it 'provides series', (done) ->
-    seq = series ((v) -> v + 1), 0
-    produced(take seq, 10)
-      .then (v) ->
-        deepEqual v, [1..10]
-      .fin(done)
-      .end()
+  describe 'series', ->
+
+    it 'generates new value from the previous one', (done) ->
+      seq = series ((v) -> v + 1), 0
+      produced(take seq, 10)
+        .then (v) ->
+          deepEqual v, [0..9]
+        .fin(done)
+        .end()
+
+    it 'flattens', (done) ->
+      # TODO: that's arguable
+      seq = series ((v) -> [v + 1]), 0
+      produced(take seq, 10)
+        .then (v) ->
+          deepEqual v, [0..9]
+        .fin(done)
+        .end()
 
 describe 'lazy', ->
 
@@ -185,3 +206,25 @@ describe 'lazy', ->
         deepEqual v, [1..10]
       .fin(done)
       .end()
+
+describe 'seq methods', ->
+
+  nats = -> series ((v) -> v + 1), 1
+
+  describe 'reduced', ->
+
+    it 'works like reduced', (done) ->
+      take(nats(), 10).reduced()
+        .then (v) ->
+          deepEqual v, 10
+        .fin(done)
+        .end()
+
+  describe 'reduced', ->
+
+    it 'works like produced', (done) ->
+      take(nats(), 10).produced()
+        .then (v) ->
+          deepEqual v, [1..10]
+        .fin(done)
+        .end()
