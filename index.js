@@ -372,6 +372,7 @@ promiseNext = function(seq) {
 
 module.exports = {
   asSeq: asSeq,
+  makeSeq: makeSeq,
   empty: empty,
   box: box,
   promise: promise,

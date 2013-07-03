@@ -221,7 +221,7 @@ promiseNext = (seq) ->
   p
 
 module.exports = {
-  asSeq, empty, box, promise, array, repeat, lazy,
+  asSeq, makeSeq, empty, box, promise, array, repeat, lazy,
   map, scan, fold, series, zip,
   take, drop, takeWhile, dropWhile, filter, join, mapCat,
   reduced, produced}
