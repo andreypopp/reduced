@@ -188,8 +188,13 @@ makeModule = function(asSeq, yieldEvery) {
       return {
         next: function(done) {
           if (n > 0) {
-            n -= 1;
-            return seq.next(done);
+            return seq.next(function(s, v) {
+              if (s != null) {
+                return done(s);
+              }
+              n -= 1;
+              return done(null, v);
+            });
           } else {
             return done(END);
           }
@@ -204,9 +209,13 @@ makeModule = function(asSeq, yieldEvery) {
       return {
         next: function(done) {
           if (n > 0) {
-            n -= 1;
-            seq.next();
-            return done(SKIP);
+            return seq.next(function(s, v) {
+              if (s != null) {
+                return done(s);
+              }
+              n -= 1;
+              return done(SKIP);
+            });
           } else {
             return seq.next(done);
           }

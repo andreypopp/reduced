@@ -114,8 +114,10 @@ makeModule = (asSeq, yieldEvery = 100) ->
       seq = asSeq seq
       next: (done) ->
         if n > 0
-          n -= 1
-          seq.next(done)
+          seq.next (s, v) ->
+            return done(s) if s?
+            n -= 1
+            done(null, v)
         else
           done(END)
 
@@ -123,9 +125,10 @@ makeModule = (asSeq, yieldEvery = 100) ->
       seq = asSeq seq
       next: (done) ->
         if n > 0
-          n -= 1
-          seq.next()
-          done(SKIP)
+          seq.next (s, v) ->
+            return done(s) if s?
+            n -= 1
+            done(SKIP)
         else
           seq.next(done)
 
