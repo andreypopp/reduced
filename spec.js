@@ -244,3 +244,22 @@ describe('lazy', function() {
     }).fin(done).end();
   });
 });
+
+describe('insane case', function() {
+  return it('is still alive', function(done) {
+    var x, _, _i, _j, _results;
+    x = (function() {
+      _results = [];
+      for (_i = 1; _i <= 100000; _i++){ _results.push(_i); }
+      return _results;
+    }).apply(this);
+    for (_ = _j = 1; _j <= 20; _ = ++_j) {
+      x = map(x, function(v) {
+        return v;
+      });
+    }
+    return reduced(x).then(function(v) {
+      return equal(v, 100000);
+    }).fin(done).end();
+  });
+});

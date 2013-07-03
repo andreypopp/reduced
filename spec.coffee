@@ -246,3 +246,15 @@ describe 'lazy', ->
         deepEqual v, [1..10]
       .fin(done)
       .end()
+
+describe 'insane case', ->
+
+  it 'is still alive', (done) ->
+    x = [1..100000]
+    for _ in [1..20]
+      x = map x, (v) -> v
+    reduced(x)
+      .then (v) ->
+        equal v, 100000
+      .fin(done)
+      .end()

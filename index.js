@@ -99,9 +99,12 @@ asSeq = function(v) {
   }
 };
 
-makeModule = function(asSeq) {
+makeModule = function(asSeq, yieldEvery) {
   var mod,
     _this = this;
+  if (yieldEvery == null) {
+    yieldEvery = 100;
+  }
   return mod = {
     SKIP: SKIP,
     END: END,
@@ -368,10 +371,14 @@ makeModule = function(asSeq) {
           return p.resolve(s);
         } else {
           nv = ns === SKIP ? s : f ? f(v, s) : v;
-          return setImmediate(function() {
+          if (n > yieldEvery) {
             n = 0;
+            return setImmediate(function() {
+              return mod.reduced(seq, f, nv, p, n + 1);
+            });
+          } else {
             return mod.reduced(seq, f, nv, p, n + 1);
-          });
+          }
         }
       };
       seq.next(onValue);

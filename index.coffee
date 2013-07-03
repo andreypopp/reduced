@@ -59,7 +59,7 @@ asSeq = (v) ->
   else
     valueAsSeq(v)
 
-makeModule = (asSeq) ->
+makeModule = (asSeq, yieldEvery = 100) ->
 
   mod =
 
@@ -208,8 +208,11 @@ makeModule = (asSeq) ->
           p.resolve(s)
         else
           nv = if ns == SKIP then s else if f then f(v, s) else v
-          setImmediate ->
+          if n > yieldEvery
             n = 0
+            setImmediate ->
+              mod.reduced seq, f, nv, p, n + 1
+          else
             mod.reduced seq, f, nv, p, n + 1
       seq.next onValue
       p
