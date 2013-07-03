@@ -7,7 +7,7 @@ empty = ->
   next: (done) ->
     done(END) if done
 
-box = (v) ->
+valueAsSeq = (v) ->
   seen = false
   next: (done) ->
     unless seen
@@ -48,16 +48,16 @@ promiseNextValue = (seq) ->
   p
 
 asSeq = (v) ->
-  if v?.next?
+  if not v?
+    empty()
+  else if v?.next?
     v
   else if Array.isArray(v)
     arrayAsSeq(v)
   else if v?.then?
     promiseAsSeq(v)
-  else if not v?
-    empty()
   else
-    box(v)
+    valueAsSeq(v)
 
 makeModule = (asSeq) ->
 
@@ -220,7 +220,7 @@ makeModule = (asSeq) ->
 module.exports = makeModule(asSeq)
 module.exports.makeModule = makeModule
 
-module.exports.box = box
+module.exports.valueAsSeq = valueAsSeq
 module.exports.promiseAsSeq = promiseAsSeq
 module.exports.arrayAsSeq = arrayAsSeq
 module.exports.promiseNextValue = promiseNextValue
