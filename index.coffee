@@ -158,7 +158,11 @@ makeModule = (asSeq, yieldEvery = 100) ->
       seq = asSeq seq
       next: (done) ->
         seq.next (s, v) ->
-          if s? then done(s) else if f(v) then done(null, v) else done(SKIP)
+          return done(s) if s?
+          if f(v)
+            done(null, v)
+          else
+            done(SKIP)
 
     join: (seqs) ->
       seqs = asSeq seqs

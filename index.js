@@ -266,7 +266,8 @@ makeModule = function(asSeq, yieldEvery) {
           return seq.next(function(s, v) {
             if (s != null) {
               return done(s);
-            } else if (f(v)) {
+            }
+            if (f(v)) {
               return done(null, v);
             } else {
               return done(SKIP);
