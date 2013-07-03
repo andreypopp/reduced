@@ -186,6 +186,7 @@ makeModule = (asSeq, yieldEvery = 100) ->
     series: (f, seed) ->
       next: (done) ->
         asSeq(seed).next (s, v) =>
+          return done(s) if s?
           seed = f v
           done(null, v)
 

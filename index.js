@@ -308,6 +308,9 @@ makeModule = function(asSeq, yieldEvery) {
         next: function(done) {
           var _this = this;
           return asSeq(seed).next(function(s, v) {
+            if (s != null) {
+              return done(s);
+            }
             seed = f(v);
             return done(null, v);
           });
