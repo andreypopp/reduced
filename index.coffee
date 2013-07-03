@@ -78,12 +78,14 @@ makeModule = (asSeq, yieldEvery = 100) ->
         seq = asSeq seqFactory() unless seq?
         seq.next(done)
 
+    # m a, (a -> b) -> m b
     map: (seq, f) ->
       seq = asSeq seq
       next: (done) ->
         seq.next (s, v) ->
           if s? then done(s) else done(null, f v)
 
+    # m a, (a, b -> b), b -> m b
     scan: (seq, f, acc) ->
       seq = asSeq seq
       next: (done) ->
@@ -94,6 +96,7 @@ makeModule = (asSeq, yieldEvery = 100) ->
             acc = f(v, acc)
             done null, acc
 
+    # m a, (a, b -> b), b -> m b
     fold: (seq, f, acc) ->
       seq = asSeq seq
       computed = false
@@ -110,6 +113,7 @@ makeModule = (asSeq, yieldEvery = 100) ->
             acc = f(v, acc)
             done SKIP
 
+    # m a, int -> m a
     take: (seq, n = 10) ->
       seq = asSeq seq
       next: (done) ->
@@ -121,6 +125,7 @@ makeModule = (asSeq, yieldEvery = 100) ->
         else
           done(END)
 
+    # m a, int -> m a
     drop: (seq, n = 10) ->
       seq = asSeq seq
       next: (done) ->
@@ -132,6 +137,7 @@ makeModule = (asSeq, yieldEvery = 100) ->
         else
           seq.next(done)
 
+    # m a, (a -> bool) -> m a
     dropWhile: (seq, f) ->
       seq = asSeq seq
       seen = false
@@ -144,6 +150,7 @@ makeModule = (asSeq, yieldEvery = 100) ->
             seen = true
             done(null, v)
 
+    # m a, (a -> bool) -> m a
     takeWhile: (seq, f) ->
       seq = asSeq seq
       next: (done) ->
@@ -154,6 +161,7 @@ makeModule = (asSeq, yieldEvery = 100) ->
           else
             done(END)
 
+    # m a, (a -> bool) -> m a
     filter: (seq, f) ->
       seq = asSeq seq
       next: (done) ->
@@ -164,6 +172,7 @@ makeModule = (asSeq, yieldEvery = 100) ->
           else
             done(SKIP)
 
+    # m m a -> m a
     join: (seqs) ->
       seqs = asSeq seqs
       current = undefined
@@ -187,6 +196,7 @@ makeModule = (asSeq, yieldEvery = 100) ->
       next: (done) ->
         unless current then nextSeq(done) else nextCurrent(done)
 
+    # m a, (a -> m b) -> m b
     mapCat: (seq, f) =>
       mod.join(mod.map(seq, f))
 
@@ -197,6 +207,7 @@ makeModule = (asSeq, yieldEvery = 100) ->
           seed = f v
           done(null, v)
 
+    # m a, m b, ... -> m (a, b, ...)
     zip: (seqs...) ->
       return mod.empty() if seqs.length == 0
       seqs = seqs.map asSeq
