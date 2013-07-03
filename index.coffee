@@ -16,7 +16,7 @@ box = (v) ->
     else
       done END
 
-array = (a) ->
+arrayAsSeq = (a) ->
   a = a.slice(0)
   next: (done) ->
     if a.length > 0
@@ -25,7 +25,7 @@ array = (a) ->
     else
       done(END)
 
-promise = (p) ->
+promiseAsSeq = (p) ->
   seen = false
   next: (done) ->
     unless seen
@@ -51,9 +51,9 @@ asSeq = (v) ->
   if v?.next?
     v
   else if Array.isArray(v)
-    array(v)
+    arrayAsSeq(v)
   else if v?.then?
-    promise(v)
+    promiseAsSeq(v)
   else if not v?
     empty()
   else
@@ -221,6 +221,6 @@ module.exports = makeModule(asSeq)
 module.exports.makeModule = makeModule
 
 module.exports.box = box
-module.exports.promise = promise
-module.exports.array = array
+module.exports.promiseAsSeq = promiseAsSeq
+module.exports.arrayAsSeq = arrayAsSeq
 module.exports.promiseNextValue = promiseNextValue
