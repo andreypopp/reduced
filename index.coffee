@@ -3,25 +3,13 @@ q = require 'kew'
 SKIP = 0
 END = 1
 
-seqProto =
-  reduced: (f, s) ->
-    reduced(this, f, s)
-
-  produced: ->
-    produced(this)
-
-makeSeq = (next) ->
-  s = Object.create(seqProto)
-  s.next = next.bind(s)
-  s
-
 empty = ->
-  makeSeq (done) ->
+  next: (done) ->
     done(END) if done
 
 box = (v) ->
   seen = false
-  makeSeq (done) ->
+  next: (done) ->
     unless seen
       seen = true
       done null, v if done
@@ -30,7 +18,7 @@ box = (v) ->
 
 array = (a) ->
   a = a.slice(0)
-  makeSeq (done) ->
+  next: (done) ->
     if a.length > 0
       value = a.shift()
       done(null, value) if done
@@ -39,7 +27,7 @@ array = (a) ->
 
 promise = (p) ->
   seen = false
-  makeSeq (done) ->
+  next: (done) ->
     unless seen
       seen = true
       p
@@ -48,6 +36,16 @@ promise = (p) ->
         .end()
     else
       done END
+
+promiseNextValue = (seq) ->
+  p = q.defer()
+  resolve = p.resolve.bind(p)
+  seq.next (s, v) ->
+    if s == SKIP
+      promiseNextValue(seq).then(resolve)
+    else
+      resolve [s, v]
+  p
 
 asSeq = (v) ->
   if v?.next?
@@ -61,167 +59,168 @@ asSeq = (v) ->
   else
     box(v)
 
-repeat = (v) ->
-  makeSeq (done) ->
-    done(null, v)
+makeModule = (asSeq) ->
 
-lazy = (seqFactory) ->
-  seq = undefined
-  makeSeq (done) ->
-    seq = asSeq seqFactory() unless seq?
-    seq.next(done)
+  mod =
 
-map = (seq, f) ->
-  seq = asSeq seq
-  makeSeq (done) ->
-    seq.next (s, v) ->
-      if s? then done(s) else done(null, f v)
+    SKIP: SKIP
+    END: END
+    asSeq: asSeq
+    empty: empty
 
-scan = (seq, f, acc) ->
-  seq = asSeq seq
-  makeSeq (done) ->
-    seq.next (s, v) ->
-      if s?
-        done s
-      else
-        acc = f(v, acc)
-        done null, acc
-
-fold = (seq, f, acc) ->
-  seq = asSeq seq
-  computed = false
-  makeSeq (done) ->
-    seq.next (s, v) ->
-      if computed
-        done(END)
-      else if s == END
-        computed = true
-        done(null, acc)
-      else if s?
-        done(s)
-      else
-        acc = f(v, acc)
-        done SKIP
-
-take = (seq, n = 10) ->
-  seq = asSeq seq
-  makeSeq (done) ->
-    if n > 0
-      n -= 1
-      seq.next(done)
-    else
-      done(END)
-
-drop = (seq, n = 10) ->
-  seq = asSeq seq
-  makeSeq (done) ->
-    if n > 0
-      n -= 1
-      seq.next()
-      done(SKIP)
-    else
-      seq.next(done)
-
-dropWhile = (seq, f) ->
-  seq = asSeq seq
-  seen = false
-  makeSeq (done) ->
-    seq.next (s, v) ->
-      return done(s) if s?
-      if f(v) and not seen
-        done(SKIP)
-      else
-        seen = true
+    repeat: (v) ->
+      next: (done) ->
         done(null, v)
 
-takeWhile = (seq, f) ->
-  seq = asSeq seq
-  makeSeq (done) ->
-    seq.next (s, v) ->
-      return done(s) if s?
-      if f(v)
-        done(null, v)
-      else
-        done(END)
+    lazy: (seqFactory) ->
+      seq = undefined
+      next: (done) ->
+        seq = asSeq seqFactory() unless seq?
+        seq.next(done)
 
-filter = (seq, f) ->
-  seq = asSeq seq
-  makeSeq (done) ->
-    seq.next (s, v) ->
-      if s? then done(s) else if f(v) then done(null, v) else done(SKIP)
+    map: (seq, f) ->
+      seq = asSeq seq
+      next: (done) ->
+        seq.next (s, v) ->
+          if s? then done(s) else done(null, f v)
 
-join = (seqs) ->
-  seqs = asSeq seqs
-  current = undefined
+    scan: (seq, f, acc) ->
+      seq = asSeq seq
+      next: (done) ->
+        seq.next (s, v) ->
+          if s?
+            done s
+          else
+            acc = f(v, acc)
+            done null, acc
 
-  nextCurrent = (done) ->
-    current.next (s, v) ->
-      if s == END
-        current = undefined
-        nextSeq(done)
-      else
-        done(s, v)
+    fold: (seq, f, acc) ->
+      seq = asSeq seq
+      computed = false
+      next: (done) ->
+        seq.next (s, v) ->
+          if computed
+            done(END)
+          else if s == END
+            computed = true
+            done(null, acc)
+          else if s?
+            done(s)
+          else
+            acc = f(v, acc)
+            done SKIP
 
-  nextSeq = (done) ->
-    seqs.next (s, seq) ->
-      if s == END
-        done(END)
-      else
-        current = asSeq seq
-        nextCurrent(done)
+    take: (seq, n = 10) ->
+      seq = asSeq seq
+      next: (done) ->
+        if n > 0
+          n -= 1
+          seq.next(done)
+        else
+          done(END)
 
-  makeSeq (done) ->
-    unless current then nextSeq(done) else nextCurrent(done)
+    drop: (seq, n = 10) ->
+      seq = asSeq seq
+      next: (done) ->
+        if n > 0
+          n -= 1
+          seq.next()
+          done(SKIP)
+        else
+          seq.next(done)
 
-mapCat = (seq, f) ->
-  join(map(seq, f))
+    dropWhile: (seq, f) ->
+      seq = asSeq seq
+      seen = false
+      next: (done) ->
+        seq.next (s, v) ->
+          return done(s) if s?
+          if f(v) and not seen
+            done(SKIP)
+          else
+            seen = true
+            done(null, v)
 
-series = (f, seed) ->
-  makeSeq (done) ->
-    asSeq(seed).next (s, v) ->
-      seed = f v
-      done(null, v)
+    takeWhile: (seq, f) ->
+      seq = asSeq seq
+      next: (done) ->
+        seq.next (s, v) ->
+          return done(s) if s?
+          if f(v)
+            done(null, v)
+          else
+            done(END)
 
-zip = (seqs...) ->
-  return empty() if seqs.length == 0
-  seqs = seqs.map asSeq
-  makeSeq (done) ->
-    values = for seq in seqs
-      promiseNext(seq)
-    q.all(values).then (values) ->
-      for [s, v] in values
-        return done(s) if s?
-      done null, (v for [s, v] in values)
+    filter: (seq, f) ->
+      seq = asSeq seq
+      next: (done) ->
+        seq.next (s, v) ->
+          if s? then done(s) else if f(v) then done(null, v) else done(SKIP)
 
-reduced = (seq, f, s, p = null, n = 0) ->
-  seq = asSeq seq
-  p = p or q.defer()
-  onValue = (ns, v) ->
-    if ns == END
-      p.resolve(s)
-    else
-      nv = if ns == SKIP then s else if f then f(v, s) else v
-      setImmediate ->
-        n = 0
-        reduced seq, f, nv, p, n + 1
-  seq.next onValue
-  p
+    join: (seqs) ->
+      seqs = asSeq seqs
+      current = undefined
 
-produced = (seq) ->
-  reduced(seq, ((v, s) -> s.concat [v]), [])
+      nextCurrent = (done) ->
+        current.next (s, v) ->
+          if s == END
+            current = undefined
+            nextSeq(done)
+          else
+            done(s, v)
 
-promiseNext = (seq) ->
-  p = q.defer()
-  resolve = p.resolve.bind(p)
-  seq.next (s, v) ->
-    if s == SKIP
-      promiseNext(seq).then(resolve)
-    else
-      resolve [s, v]
-  p
+      nextSeq = (done) ->
+        seqs.next (s, seq) ->
+          if s == END
+            done(END)
+          else
+            current = asSeq seq
+            nextCurrent(done)
 
-module.exports = {
-  asSeq, makeSeq, empty, box, promise, array, repeat, lazy,
-  map, scan, fold, series, zip,
-  take, drop, takeWhile, dropWhile, filter, join, mapCat,
-  reduced, produced}
+      next: (done) ->
+        unless current then nextSeq(done) else nextCurrent(done)
+
+    mapCat: (seq, f) =>
+      mod.join(mod.map(seq, f))
+
+    series: (f, seed) ->
+      next: (done) ->
+        asSeq(seed).next (s, v) =>
+          seed = f v
+          done(null, v)
+
+    zip: (seqs...) ->
+      return mod.empty() if seqs.length == 0
+      seqs = seqs.map asSeq
+      next: (done) =>
+        values = for seq in seqs
+          promiseNextValue(seq)
+        q.all(values).then (values) ->
+          for [s, v] in values
+            return done(s) if s?
+          done null, (v for [s, v] in values)
+
+    reduced: (seq, f, s, p = null, n = 0) ->
+      seq = asSeq seq
+      p = p or q.defer()
+      onValue = (ns, v) ->
+        if ns == END
+          p.resolve(s)
+        else
+          nv = if ns == SKIP then s else if f then f(v, s) else v
+          setImmediate ->
+            n = 0
+            mod.reduced seq, f, nv, p, n + 1
+      seq.next onValue
+      p
+
+    produced: (seq) ->
+      mod.reduced(seq, ((v, s) -> s.concat [v]), [])
+
+module.exports = makeModule(asSeq)
+module.exports.makeModule = makeModule
+
+module.exports.box = box
+module.exports.promise = promise
+module.exports.array = array
+module.exports.promiseNextValue = promiseNextValue

@@ -246,25 +246,3 @@ describe 'lazy', ->
         deepEqual v, [1..10]
       .fin(done)
       .end()
-
-describe 'seq methods', ->
-
-  nats = -> series ((v) -> v + 1), 1
-
-  describe 'reduced', ->
-
-    it 'works like reduced', (done) ->
-      take(nats(), 10).reduced()
-        .then (v) ->
-          deepEqual v, 10
-        .fin(done)
-        .end()
-
-  describe 'reduced', ->
-
-    it 'works like produced', (done) ->
-      take(nats(), 10).produced()
-        .then (v) ->
-          deepEqual v, [1..10]
-        .fin(done)
-        .end()

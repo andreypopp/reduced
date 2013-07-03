@@ -244,26 +244,3 @@ describe('lazy', function() {
     }).fin(done).end();
   });
 });
-
-describe('seq methods', function() {
-  var nats;
-  nats = function() {
-    return series((function(v) {
-      return v + 1;
-    }), 1);
-  };
-  describe('reduced', function() {
-    return it('works like reduced', function(done) {
-      return take(nats(), 10).reduced().then(function(v) {
-        return deepEqual(v, 10);
-      }).fin(done).end();
-    });
-  });
-  return describe('reduced', function() {
-    return it('works like produced', function(done) {
-      return take(nats(), 10).produced().then(function(v) {
-        return deepEqual(v, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-      }).fin(done).end();
-    });
-  });
-});
