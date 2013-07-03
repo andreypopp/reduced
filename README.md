@@ -22,3 +22,15 @@ Brief example:
 
     reduced(sum100).then (v) ->
       equal v, 100
+
+## reduced is a parametrized module (functor)
+
+You can use reduced with other types of monads — there's `makeModule` function
+which created another instance of `reduced` module.
+
+    var reducedForStreams = reduced.makeModule(function(stream) {
+      // make seq from a stream
+    });
+
+That way `reducedForStreams` would have exactly the same function available as
+original `reduce` module but those functions will work only on streams.
