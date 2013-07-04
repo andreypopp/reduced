@@ -327,6 +327,36 @@ makeModule = function(asSeq, yieldEvery) {
         }
       };
     },
+    window: function(seq, n) {
+      var buffer;
+      seq = asSeq(seq);
+      buffer = [];
+      return {
+        next: function(done) {
+          return seq.next(function(s, v) {
+            var value;
+            if (s === END && buffer.length > 0) {
+              value = buffer.slice(0);
+              buffer.shift();
+              done(null, value);
+              return;
+            }
+            if (s != null) {
+              return done(s);
+            }
+            if (buffer.length < n) {
+              buffer.push(v);
+              return done(SKIP);
+            } else {
+              value = buffer.slice(0);
+              buffer.shift();
+              buffer.push(v);
+              return done(null, value);
+            }
+          });
+        }
+      };
+    },
     zip: function() {
       var seqs,
         _this = this;

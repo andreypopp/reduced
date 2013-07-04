@@ -2,7 +2,7 @@
 {asSeq, lazy,
   repeat, map, scan, fold, series,
   take, drop, takeWhile, dropWhile,
-  filter, join, mapCat, zip,
+  filter, join, mapCat, zip, window,
   reduced, produced} = require './index'
 {resolve, all} = require 'kew'
 
@@ -234,6 +234,40 @@ describe 'combinators', ->
       produced(take seq, 10)
         .then (v) ->
           deepEqual v, [0..9]
+        .fin(done)
+        .end()
+
+  describe 'window', ->
+
+    it 'generates a sliding window', (done) ->
+      seq = [1..10]
+      produced(window seq, 2)
+        .then (v) ->
+          deepEqual v, [
+              [1, 2],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6],
+              [6, 7],
+              [7, 8],
+              [8, 9],
+              [9, 10],
+              [10]
+            ]
+        .fin(done)
+        .end()
+
+    it 'works even if seq has not enough elements', (done) ->
+      seq = [1..4]
+      produced(window seq, 5)
+        .then (v) ->
+          deepEqual v, [
+              [1, 2, 3, 4],
+              [2, 3, 4],
+              [3, 4],
+              [4]
+            ]
         .fin(done)
         .end()
 

@@ -200,12 +200,36 @@ makeModule = (asSeq, yieldEvery = 100) ->
     mapCat: (seq, f) =>
       mod.join(mod.map(seq, f))
 
+    # (a -> m b), m a -> m b
     series: (f, seed) ->
       next: (done) ->
         asSeq(seed).next (s, v) =>
           return done(s) if s?
           seed = f v
           done(null, v)
+
+    # m a, int -> m m a
+    window: (seq, n) ->
+      seq = asSeq seq
+      buffer = []
+      next: (done) ->
+        seq.next (s, v) ->
+          if s == END and buffer.length > 0
+            value = buffer.slice(0)
+            buffer.shift()
+            done(null, value)
+            return
+
+          return done(s) if s?
+
+          if buffer.length < n
+            buffer.push(v)
+            done(SKIP)
+          else
+            value = buffer.slice(0)
+            buffer.shift()
+            buffer.push(v)
+            done(null, value)
 
     # m a, m b, ... -> m (a, b, ...)
     zip: (seqs...) ->
